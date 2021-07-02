@@ -1,0 +1,78 @@
+version: '3.7'
+
+services:
+    db:
+        hostname: db
+        container_name: postgres
+        image: postgres:latest
+        restart: always
+        environment:
+            POSTGRES_DB: pern-test
+            POSTGRES_USER: admin
+            POSTGRES_PASSWORD: test
+            PGDATA: /var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        networks:
+            - pgnetwork
+        volumes:
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+            - "pgdata:/var/lib/postgresql/data"
+
+    pgadmin:
+        container_name: pgadmin_container
+        image: dpage/pgadmin4
+        depends_on:
+            - db
+        restart: always
+        environment:
+            PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
+            PGADMIN_DEFAULT_PASSWORD: password
+            PGADMIN_LISTEN_PORT: 80
+        ports:
+            - "5050:80"
+        networks:
+            - pgnetwork
+        volumes:
+            - "pgadmin-data:/var/lib/pgadmin"
+        
+    server:
+        container_name: server
+        hostname: server
+        depends_on:
+            - db
+        restart: always
+        build: 
+            context: ./server
+            dockerfile: local.Dockerfile
+        networks:
+            - pgnetwork
+        environment:
+            PORT: 3000
+            DB_HOST: db
+        ports:
+            - 3000:3000
+        volumes:
+            - "./server/src:/usr/src/app/src"
+
+    client:
+        container_name: client
+        hostname: client
+        build:
+            context: ./client
+            dockerfile: local.Dockerfile
+        ports:
+            - 3001:3001
+        volumes:
+            - "./client/src:/usr/src/app/src"
+            - "./client/webpack:/usr/src/app/webpack"
+
+networks:
+  pgnetwork:
+    driver: bridge
+
+volumes:
+    pgdata:
+        external: true
+    pgadmin-data:
+        external: true
